@@ -1,20 +1,11 @@
 const { app, BrowserWindow } = require("electron");
-const { spawn } = require("child_process");
-const path = require("path");
 const http = require("http");
+const next = require("next");
 
-let nextServer;
+process.env.NODE_ENV = "production";
+process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://user:pass@localhost:5432/mydb";
 
-function waitForServer(url, callback) {
-  const interval = setInterval(() => {
-    http.get(url, (res) => {
-      if (res.statusCode === 200 || res.statusCode === 404) {
-        clearInterval(interval);
-        callback();
-      }
-    }).on("error", () => {});
-  }, 500);
-}
+let server;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -28,20 +19,23 @@ function createWindow() {
 
   win.setMenuBarVisibility(false);
 
-  const nextBin = path.join(__dirname, "node_modules", "next", "dist", "bin", "next");
-  nextServer = spawn(process.execPath, [nextBin, "start", "-p", "3456"], {
-    cwd: __dirname,
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", NODE_ENV: "production" },
-  });
+  const nextApp = next({ dev: false, dir: __dirname });
+  const handle = nextApp.getRequestHandler();
 
-  waitForServer("http://localhost:3456", () => {
-    win.loadURL("http://localhost:3456");
+  nextApp.prepare().then(() => {
+    server = http.createServer((req, res) => {
+      handle(req, res);
+    });
+
+    server.listen(3456, "127.0.0.1", () => {
+      win.loadURL("http://127.0.0.1:3456");
+    });
   });
 }
 
 app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {
-  if (nextServer) nextServer.kill();
+  if (server) server.close();
   if (process.platform !== "darwin") app.quit();
 });
