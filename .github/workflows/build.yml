@@ -19,6 +19,8 @@ jobs:
       - run: npm install --legacy-peer-deps
 
       - run: npm run build
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/mydb"
 
       - run: npm install --save-dev electron electron-builder --legacy-peer-deps
 
