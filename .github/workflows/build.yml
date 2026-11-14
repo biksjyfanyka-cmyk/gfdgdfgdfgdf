@@ -1,40 +1,20 @@
-name: Build EXE
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
+name: Build Next Game EXE
+on: [push]
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - run: npm install --legacy-peer-deps
-
+      - run: npm install --save-dev electron electron-builder --legacy-peer-deps
       - run: npm run build
         env:
           DATABASE_URL: "postgresql://user:pass@localhost:5432/mydb"
-
-      - run: npm install --save-dev electron electron-builder --legacy-peer-deps
-
-      - shell: pwsh
-        run: |
-          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
-          $pkg | Add-Member -NotePropertyName "main" -NotePropertyValue "main.js" -Force
-          if (-not $pkg.version) { $pkg | Add-Member -NotePropertyName "version" -NotePropertyValue "1.0.0" -Force }
-          if (-not $pkg.description) { $pkg | Add-Member -NotePropertyName "description" -NotePropertyValue "Desktop App" -Force }
-          if (-not $pkg.author) { $pkg | Add-Member -NotePropertyName "author" -NotePropertyValue "Developer" -Force }
-          $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
-          npx electron-builder --win portable --publish never
-
+      - run: npx electron-builder --win dir --publish never --config.appId=com.next.game --config.productName=NextGame --config.directories.output=release --config.files=".next/**/*" --config.files="public/**/*" --config.files="node_modules/**/*" --config.files="package.json" --config.files="main.js" --config.extraMetadata.main=main.js --config.extraMetadata.version=1.0.0
       - uses: actions/upload-artifact@v4
         with:
-          name: Windows-EXE
-          path: dist/*.exe
+          name: Game-Ready
+          path: release/win-unpacked/**/*
